@@ -3,11 +3,14 @@ package keeper
 import (
 	"fmt"
 
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/cometbft/cometbft/libs/log"
 
+	sdkmath "cosmossdk.io/math"
+	admintypes "github.com/CudoVentures/cudos-node/x/admin/types"
 	"github.com/CudoVentures/cudos-node/x/marketplace/types"
 	"github.com/CudoVentures/cudos-node/x/nft/exported"
 	"github.com/cosmos/cosmos-sdk/codec"
+	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
@@ -16,8 +19,8 @@ import (
 type (
 	Keeper struct {
 		cdc        codec.BinaryCodec
-		storeKey   sdk.StoreKey
-		memKey     sdk.StoreKey
+		storeKey   storetypes.StoreKey
+		memKey     storetypes.StoreKey
 		paramstore paramtypes.Subspace
 
 		bankKeeper types.BankKeeper
@@ -28,7 +31,7 @@ type (
 func NewKeeper(
 	cdc codec.BinaryCodec,
 	storeKey,
-	memKey sdk.StoreKey,
+	memKey storetypes.StoreKey,
 	ps paramtypes.Subspace,
 
 	bankKeeper types.BankKeeper, nftKeeper types.NftKeeper,
@@ -244,7 +247,7 @@ func (k Keeper) GetCollectionByDenomID(ctx sdk.Context, denomID string) (types.C
 }
 
 func getProportion(totalCoin sdk.Coin, ratio sdk.Dec) sdk.Coin {
-	return sdk.NewCoin(totalCoin.Denom, totalCoin.Amount.ToDec().Mul(ratio).Quo(sdk.NewDec(100)).TruncateInt())
+	return sdk.NewCoin(totalCoin.Denom, sdkmath.LegacyNewDecFromInt(totalCoin.Amount).Mul(ratio).Quo(sdk.NewDec(100)).TruncateInt())
 }
 
 func (k Keeper) DistributeRoyalties(ctx sdk.Context, price sdk.Coin, seller string, royalties []types.Royalty) error {
@@ -365,12 +368,12 @@ func (k Keeper) isCudosAdmin(ctx sdk.Context, address string) error {
 		return err
 	}
 
-	balance := k.bankKeeper.GetBalance(ctx, accAddr, types.AdminDenom)
+	balance := k.bankKeeper.GetBalance(ctx, accAddr, admintypes.AdminDenom)
 	if balance.IsPositive() {
 		return nil
 	}
 
-	return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "Insufficient permissions. Address '%s' has no %s tokens", address, types.AdminDenom)
+	return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "Insufficient permissions. Address '%s' has no %s tokens", address, admintypes.AdminDenom)
 }
 
 func (k Keeper) setAdmins(ctx sdk.Context, admins []string) {
